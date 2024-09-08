@@ -1,6 +1,6 @@
 import numpy as np
 import os
-import collections
+import collections.abc
 from os.path import dirname, abspath, join
 from copy import deepcopy
 from sacred import Experiment, SETTINGS
@@ -12,6 +12,8 @@ from utils.logging import get_logger
 import yaml
 
 from run import REGISTRY as run_REGISTRY
+
+import wandb
 
 SETTINGS['CAPTURE_MODE'] = "fd" # set to "no" if you want to see stdout/stderr in console
 logger = get_logger()
@@ -25,6 +27,7 @@ results_path = join(dirname(dirname(abspath(__file__))), "results")
 
 @ex.main
 def my_main(_run, _config, _log):
+    wandb.init(project='MARL', config=_config, name='QMIX_test')
     # Setting the random seed throughout the modules
     config = config_copy(_config)
     np.random.seed(config["seed"])
@@ -37,6 +40,8 @@ def my_main(_run, _config, _log):
     else:
         run_REGISTRY[_config['run']](_run, config, _log)
 
+    wandb.finish()
+
 def _get_config(params, arg_name, subfolder):
     config_name = None
     for _i, _v in enumerate(params):
@@ -48,7 +53,7 @@ def _get_config(params, arg_name, subfolder):
     if config_name is not None:
         with open(os.path.join(os.path.dirname(__file__), "config", subfolder, "{}.yaml".format(config_name)), "r") as f:
             try:
-                config_dict = yaml.load(f)
+                config_dict = yaml.safe_load(f)
             except yaml.YAMLError as exc:
                 assert False, "{}.yaml error: {}".format(config_name, exc)
         return config_dict
@@ -56,7 +61,7 @@ def _get_config(params, arg_name, subfolder):
 
 def recursive_dict_update(d, u):
     for k, v in u.items():
-        if isinstance(v, collections.Mapping):
+        if isinstance(v, collections.abc.Mapping):
             d[k] = recursive_dict_update(d.get(k, {}), v)
         else:
             d[k] = v
@@ -82,19 +87,27 @@ def parse_command(params, key, default):
 
 
 if __name__ == '__main__':
+    # 这里的sys.argv包含了从命令行传递给脚本的参数。
+    # 使用deepcopy创建params的副本，以避免对原始命令行参数进行修改。
     params = deepcopy(sys.argv)
 
     # Get the defaults from default.yaml
+    # 从default.yaml文件加载默认配置，并将其存储在config_dict中。
+    # 如果加载过程中发生错误，会抛出异常并显示错误信息。
     with open(os.path.join(os.path.dirname(__file__), "config", "default.yaml"), "r") as f:
         try:
-            config_dict = yaml.load(f)
+            config_dict = yaml.safe_load(f)
         except yaml.YAMLError as exc:
             assert False, "default.yaml error: {}".format(exc)
 
     # Load algorithm and env base configs
+    # 调用_get_config函数从命令行参数中提取环境配置和算法配置，并分别加载
+    # 调用会根据传入的参数在 config/envs 和 config/algs 目录中查找相应的配置文件并加载它们。
     env_config = _get_config(params, "--env-config", "envs")
     alg_config = _get_config(params, "--config", "algs")
     # config_dict = {**config_dict, **env_config, **alg_config}
+    # 使用 recursive_dict_update 函数将环境配置和算法配置递归地合并到默认配置中
+    # 确保最终的配置字典包含所有需要的参数。
     config_dict = recursive_dict_update(config_dict, env_config)
     config_dict = recursive_dict_update(config_dict, alg_config)
 

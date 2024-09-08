@@ -9,6 +9,7 @@ import torch as th
 from torch.optim import RMSprop, Adam
 import numpy as np
 from utils.th_utils import get_parameters_num
+import wandb
 
 class NQLearner:
     def __init__(self, mac, scheme, logger, args):
@@ -138,6 +139,7 @@ class NQLearner:
             self.logger.log_stat("q_taken_mean", (chosen_action_qvals * mask).sum().item()/(mask_elems * self.args.n_agents), t_env)
             self.logger.log_stat("target_mean", (targets * mask).sum().item()/(mask_elems * self.args.n_agents), t_env)
             self.log_stats_t = t_env
+            wandb.log({"loss_td": L_td.item()})
             
             # print estimated matrix
             if self.args.env == "one_step_matrix_game":

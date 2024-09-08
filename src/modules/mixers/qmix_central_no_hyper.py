@@ -5,6 +5,8 @@ import numpy as np
 
 
 class QMixerCentralFF(nn.Module):
+    # 通过前馈神经网络和状态偏置的方式将多个智能体的 Q 值和全局状态结合起来，计算全局 Q 值。
+    # Feedforward Neural Network
     def __init__(self, args):
         super(QMixerCentralFF, self).__init__()
 
