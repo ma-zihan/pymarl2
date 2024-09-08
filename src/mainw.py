@@ -108,7 +108,7 @@ if __name__ == '__main__':
         config_dict["env_args"]["map_name"] = "default_map"  
 
 
-    wandb.init(project='MARL', config=config_dict, name='QMIX_test')
+    wandb.init(project='MARL', config=config_dict, name='QMIX_test', entity='zihan-ma')
 
 
     config = wandb.config
